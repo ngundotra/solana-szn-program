@@ -24,6 +24,7 @@ use::{
 use crate::{
     // error::Sol2SolError,
     instruction::Sol2SolInstruction,
+    state::{SolBox, SOL_BOX_NUM_SPOTS},
 };
 
 /// Directs how message instructions will be handled
@@ -94,6 +95,16 @@ impl Processor {
         next_box: &'a Pubkey,
         prev_box: &'a Pubkey,
     ) -> ProgramResult {
+        let message_slots: [Pubkey; SOL_BOX_NUM_SPOTS] = SolBox::get_empty_message_slots();
+        let sol_box = SolBox {
+            owner: *owner,
+            next_box: *next_box,
+            prev_box: *prev_box,
+            num_spots,
+            message_slots,
+            is_initialized: true,
+            num_in_use: 0,
+        };
         Ok(())
     }
 
