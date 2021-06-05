@@ -77,39 +77,40 @@ impl Pack for SolBox {
     }
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
-        todo!();
-        // let (
-        //     owner_dst,
-        //     num_spots_dst,
-        //     num_in_use_dst,
-        //     is_initialized_dst,
-        //     message_slots_dst,
-        // ) = mut_array_refs![dst, 32, 4, 4, 1, (NUM_SPOTS as usize)*32 ];
-        // let &SolBox {
-        //     ref owner,
-        //     num_spots,
-        //     num_in_use,
-        //     is_initialized,
-        //     ref message_slots,
-        // } = self;
-        // owner_dst.copy_from_slice(owner.as_ref());
-        // *num_spots_dst = num_spots.to_le_bytes();
-        // *num_in_use_dst = num_in_use.to_le_bytes();
-        // is_initialized_dst[0] = is_initialized as u8;
-        // Self::pack_keys_into_ref(&message_slots, message_slots_dst);
-    }
+        let dst = array_mut_ref![dst, 0, SolBox::LEN];
+        let (
+            owner_dst,
+            num_spots_dst,
+            num_in_use_dst,
+            is_initialized_dst,
+            message_slots_dst,
+        ) = mut_array_refs![dst, 32, 4, 4, 1, (NUM_SPOTS as usize)*32];
+        let &SolBox {
+            ref owner,
+            num_spots,
+            num_in_use,
+            is_initialized,
+            ref message_slots,
+        } = self;
+        owner_dst.copy_from_slice(owner.as_ref());
+        *num_spots_dst = num_spots.to_le_bytes();
+        *num_in_use_dst = num_in_use.to_le_bytes();
+        is_initialized_dst[0] = is_initialized as u8;
 
-    // fn pack_keys_into_ref(message_slots: &vec::Vec, message_slots_dst: &[u8]) {
-    //     // Pack the keys into an array
-    //     let keys: [Pubkey; NUM_SPOTS] = [Pubkey::from_str(NULL_PUBKEY_STR)?, NUM_SPOTS][..];
-    //     for i in 0..num_in_use {
-    //         keys[i] = message_slots[i];
-    //     }
-    //     for i in num_in_use..Self::LEN {
-    //         keys[i] = ;
-    //     }
-    //     message_slots_dst = keys.to_bytes();
-    // }
+        pack_keys_into_ref(&message_slots, message_slots_dst);
+    }
+}
+
+fn pack_keys_into_ref(message_slots: &[Pubkey; NUM_SPOTS], message_slots_dst: &mut [u8]) {
+    // Pack the keys into an array
+    let key_bytes: &mut [u8; NUM_SPOTS] = &mut [0; NUM_SPOTS];
+    for i in 0..NUM_SPOTS {
+        let bytes = message_slots[i].to_bytes();
+        for j in 0..32 {
+            key_bytes[i*32+j] = bytes[j];
+        }
+    }
+    message_slots_dst.copy_from_slice(key_bytes.as_ref());
 }
 
 #[cfg(test)]
