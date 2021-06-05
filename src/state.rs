@@ -112,24 +112,32 @@ impl Pack for SolBox {
     // }
 }
 
-#[cfg(tests)]
-mod tests {
+#[cfg(test)]
+pub mod tests {
     use super::*;
 
     #[test]
     fn test_sol_box_state() {
-        owner = Pubkey::new_unique();
-        num_spots = 20;
-        num_in_use = 3;
-        is_initialized = true;
-        address1 = Pubkey::new_unique();
-        address2 = Pubkey::new_unique();
-        address3 = Pubkey::new_unique();
-        message_slots = vec![address1, address2, address3];
+        println!("Penis!");
+        let owner = Pubkey::new_unique();
+        let num_spots = 20;
+        let num_in_use = 3;
+        let is_initialized = true;
+        let address1 = Pubkey::new_unique();
+        let address2 = Pubkey::new_unique();
+        let address3 = Pubkey::new_unique();
+        let NULL_PUBKEY = Pubkey::from_str(NULL_PUBKEY_STR).unwrap();
+        let message_slots = [
+            address1, address2, address3, NULL_PUBKEY, NULL_PUBKEY,
+            NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY,
+            NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY,
+            NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY,
+        ];
         let init_box = SolBox {
             owner,
             num_in_use,
             num_spots,
+            is_initialized,
             message_slots
         };
         assert_eq!(1, 1);
