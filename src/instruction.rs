@@ -42,6 +42,8 @@ pub enum Sol2SolInstruction {
         sender: Pubkey,
         /// Which address is the email for
         recipient: Pubkey,
+        /// Which box to send it to
+        sol_box_id: Pubkey,
         /// How large is the email
         msg_size: u32,
         /// What is the utf-8 data of the email
@@ -77,11 +79,13 @@ impl Sol2SolInstruction {
             1 => {
                 let (sender, rest) = Self::unpack_pubkey(rest)?;
                 let (recipient, rest) = Self::unpack_pubkey(rest)?;
+                let (sol_box_id, rest) = Self::unpack_pubkey(rest)?;
                 let (msg_size, rest) = Self::unpack_size(rest)?;
                 let (msg_string, _rest) = Self::unpack_msg(rest, msg_size as usize)?;
                 Self::WriteMessage {
                     sender,
                     recipient,
+                    sol_box_id,
                     msg_size,
                     msg_string
                 }
@@ -161,12 +165,14 @@ impl Sol2SolInstruction {
             Self::WriteMessage {
                 sender,
                 recipient,
+                sol_box_id,
                 msg_size,
                 msg_string,
             } => {
                 buf.push(1);
                 buf.extend_from_slice(&sender.to_bytes());
                 buf.extend_from_slice(&recipient.to_bytes());
+                buf.extend_from_slice(&sol_box_id.to_bytes());
                 buf.extend_from_slice(&msg_size.to_le_bytes());
                 Self::pack_msg(&msg_string, &mut buf);
             }
@@ -202,16 +208,18 @@ mod tests {
         let msg_size: u32 = msg_string.len() as u32;            // 4
         let sender = Pubkey::new_unique();                      // 32
         let recipient = Pubkey::new_unique();                   // 32
-        // 12 + 4 + 32 + 32 + 1 (tag) = 81
-        // msg!("test-instruction message size is: {:?} [{:?}]", msg_size, msg_string);
+        let sol_box_id = Pubkey::new_unique();                  // 32
+        // 12 + 4 + 32 + 32 + 1 (tag) = 113
         let instruction = Sol2SolInstruction::WriteMessage {
             sender,
             recipient,
+            sol_box_id,
             msg_size,
             msg_string,
         };
         let packed_vec = instruction.pack();
-        assert_eq!(69 + msg_size as usize, packed_vec.len());
+        assert_eq!(101 + msg_size as usize, packed_vec.len());
+        assert_eq!(113, packed_vec.len());
         
         let recreated = Sol2SolInstruction::unpack(&packed_vec[..]).unwrap();
         assert_eq!(instruction, recreated);
@@ -220,13 +228,10 @@ mod tests {
                 assert_eq!(init_msg_string, msg_string);
             }
             _ => {
+                // Lol manually fail test
                 assert_eq!(0, 1);
             }
         }
-        // let Sol2SolInstruction::WriteMessage{ msg_string, .. } = instruction;
-        // // msg!("test-instruction message was: {}", msg_string);
-        // let Sol2SolInstruction::WriteMessage{ msg_string, .. } = recreated;
-        // // msg!("test-instruction message recreated is: {}", msg_string);
     }
 
     // #[test]
