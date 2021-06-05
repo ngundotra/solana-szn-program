@@ -8,7 +8,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use std::{convert::TryFrom, str::FromStr, vec};
+use std::{convert::TryFrom, str::FromStr};
 use crate::error::Sol2SolError;
 
 const NULL_PUBKEY_STR: &'static str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
@@ -59,12 +59,13 @@ impl Pack for SolBox {
             _ => return Err(ProgramError::InvalidAccountData)
         };
 
-        let NULL_PUBKEY = Pubkey::from_str(NULL_PUBKEY_STR).unwrap();
-        let message_slots: &mut [Pubkey; NUM_SPOTS] = &mut [NULL_PUBKEY; NUM_SPOTS];
-        for i in 0..NUM_SPOTS {
-            let (message_pubkey_data, message_slots_src) = &message_slots_src.split_at(32);
-            let message_pubkey = Pubkey::new(message_pubkey_data);
+        let null_pubkey = Pubkey::from_str(NULL_PUBKEY_STR).unwrap();
+        let message_slots: &mut [Pubkey; NUM_SPOTS] = &mut [null_pubkey; NUM_SPOTS];
+        let mut i = 0;
+        for chunk in message_slots_src.chunks(32) {
+            let message_pubkey = Pubkey::new(chunk);
             message_slots[i] = message_pubkey;
+            i += 1;
         }
 
         Ok(Self {
@@ -103,7 +104,7 @@ impl Pack for SolBox {
 
 fn pack_keys_into_ref(message_slots: &[Pubkey; NUM_SPOTS], message_slots_dst: &mut [u8]) {
     // Pack the keys into an array
-    let key_bytes: &mut [u8; NUM_SPOTS] = &mut [0; NUM_SPOTS];
+    let key_bytes: &mut [u8; NUM_SPOTS*32] = &mut [0; NUM_SPOTS*32];
     for i in 0..NUM_SPOTS {
         let bytes = message_slots[i].to_bytes();
         for j in 0..32 {
@@ -127,12 +128,12 @@ pub mod tests {
         let address1 = Pubkey::new_unique();
         let address2 = Pubkey::new_unique();
         let address3 = Pubkey::new_unique();
-        let NULL_PUBKEY = Pubkey::from_str(NULL_PUBKEY_STR).unwrap();
+        let null_pubkey = Pubkey::from_str(NULL_PUBKEY_STR).unwrap();
         let message_slots = [
-            address1, address2, address3, NULL_PUBKEY, NULL_PUBKEY,
-            NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY,
-            NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY,
-            NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY, NULL_PUBKEY,
+            address1, address2, address3, null_pubkey, null_pubkey,
+            null_pubkey, null_pubkey, null_pubkey, null_pubkey, null_pubkey,
+            null_pubkey, null_pubkey, null_pubkey, null_pubkey, null_pubkey,
+            null_pubkey, null_pubkey, null_pubkey, null_pubkey, null_pubkey,
         ];
         let init_box = SolBox {
             owner,
@@ -141,6 +142,11 @@ pub mod tests {
             is_initialized,
             message_slots
         };
-        assert_eq!(1, 1);
+        
+        let dst: &mut [u8; SolBox::LEN] = &mut [0; SolBox::LEN];
+        init_box.pack_into_slice(dst);
+
+        let recreated_box = SolBox::unpack_from_slice(dst).unwrap();
+        assert_eq!(init_box, recreated_box);
     }
 }

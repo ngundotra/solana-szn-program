@@ -1,22 +1,21 @@
 //! Instructions for email
 use {
     arrayref::{
-        array_refs,
         array_ref,
     },
     solana_program::{
-        instruction::{AccountMeta, Instruction},
+        // instruction::{AccountMeta, Instruction},
         program_error::{ProgramError},
         pubkey::Pubkey,
-        program_option::COption,
-        sysvar,
+        // program_option::COption,
+        // sysvar,
     },
     std::{
         result::Result,
-        convert::TryInto,
+        // convert::TryInto,
         mem::size_of,
         vec::Vec,
-        str,
+        // str,
     }
 };
 use crate::{error::Sol2SolError};
