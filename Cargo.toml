@@ -1,0 +1,34 @@
+[package]
+name = "sol2sol"
+version = "1.0.0"
+description = "anonymous msgs"
+authors = ["Noah Gundotra <noah@gundotra.org>"]
+repository = "ngundotra.github.io"
+license = "Apache-2.0"
+edition = "2018"
+publish = false
+
+[features]
+no-entrypoint = []
+test-bpf = []
+
+[dependencies]
+arrayref = "0.3.6"
+num-traits = "0.2"
+num-derive = "0.3.3"
+borsh = "0.9.0"
+borsh-derive = "0.9.0"
+solana-program = "1.6.10"
+spl-token = { version = "3.1.1", features = ["no-entrypoint"] }
+thiserror = "1.0.24"
+
+[dev-dependencies]
+solana-program-test = "1.6.10"
+solana-sdk = "1.6.7"
+test-env-log = "0.2.7"
+env_logger = "*"
+log = "0.4.14"
+
+[lib]
+name = "sol2sol"
+crate-type = ["cdylib", "lib"]
