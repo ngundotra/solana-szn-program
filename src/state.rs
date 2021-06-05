@@ -1,0 +1,137 @@
+//! State for messaging
+//! Todo(ngundotra): design a whitelist system + transferring lamports
+
+use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
+// use num_enum::TryFromPrimitive;
+use solana_program::{
+    program_error::ProgramError,
+    program_pack::{IsInitialized, Pack, Sealed},
+    pubkey::Pubkey,
+};
+use std::{convert::TryFrom, str::FromStr, vec};
+use crate::error::Sol2SolError;
+
+const NULL_PUBKEY_STR: &'static str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const NUM_SPOTS: usize = 20;
+
+// Todo(ngundotra): remove assumption that box size is 20
+/// SolBox
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SolBox {
+    /// Who owns this SolBox
+    pub owner: Pubkey,
+    /// How many messages this box stores
+    pub num_spots: u32,
+    /// How many messages have been used
+    pub num_in_use: u32,
+    /// Has been initialized?
+    pub is_initialized: bool,
+    /// The message pubkeys (const # only 40)
+    pub message_slots: [Pubkey; NUM_SPOTS],
+}
+impl Sealed for SolBox {}
+impl IsInitialized for SolBox {
+    fn is_initialized(&self) -> bool {
+        self.is_initialized
+    }
+}
+impl Pack for SolBox {
+    const LEN: usize = 681; //20*32+32+4+4+1;
+
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        let src = array_ref![src, 0, SolBox::LEN];
+        let (owner, num_spots, num_in_use, is_initialized, message_slots_src) =
+            array_refs![src, 32, 4, 4, 1, NUM_SPOTS*32];
+
+        let owner = Pubkey::new(owner);
+
+        let num_spots = u32::from_le_bytes(*num_spots);
+        if usize::try_from(num_spots).unwrap() != NUM_SPOTS {
+            return Err(ProgramError::InvalidAccountData)
+        }
+
+        let num_in_use = u32::from_le_bytes(*num_in_use);
+
+        let is_initialized = match is_initialized {
+            [0] => false,
+            [1] => true,
+            _ => return Err(ProgramError::InvalidAccountData)
+        };
+
+        let NULL_PUBKEY = Pubkey::from_str(NULL_PUBKEY_STR).unwrap();
+        let message_slots: &mut [Pubkey; NUM_SPOTS] = &mut [NULL_PUBKEY; NUM_SPOTS];
+        for i in 0..NUM_SPOTS {
+            let (message_pubkey_data, message_slots_src) = &message_slots_src.split_at(32);
+            let message_pubkey = Pubkey::new(message_pubkey_data);
+            message_slots[i] = message_pubkey;
+        }
+
+        Ok(Self {
+            owner,
+            num_spots,
+            num_in_use,
+            is_initialized,
+            message_slots: *message_slots
+        })
+    }
+
+    fn pack_into_slice(&self, dst: &mut [u8]) {
+        todo!();
+        // let (
+        //     owner_dst,
+        //     num_spots_dst,
+        //     num_in_use_dst,
+        //     is_initialized_dst,
+        //     message_slots_dst,
+        // ) = mut_array_refs![dst, 32, 4, 4, 1, (NUM_SPOTS as usize)*32 ];
+        // let &SolBox {
+        //     ref owner,
+        //     num_spots,
+        //     num_in_use,
+        //     is_initialized,
+        //     ref message_slots,
+        // } = self;
+        // owner_dst.copy_from_slice(owner.as_ref());
+        // *num_spots_dst = num_spots.to_le_bytes();
+        // *num_in_use_dst = num_in_use.to_le_bytes();
+        // is_initialized_dst[0] = is_initialized as u8;
+        // Self::pack_keys_into_ref(&message_slots, message_slots_dst);
+    }
+
+    // fn pack_keys_into_ref(message_slots: &vec::Vec, message_slots_dst: &[u8]) {
+    //     // Pack the keys into an array
+    //     let keys: [Pubkey; NUM_SPOTS] = [Pubkey::from_str(NULL_PUBKEY_STR)?, NUM_SPOTS][..];
+    //     for i in 0..num_in_use {
+    //         keys[i] = message_slots[i];
+    //     }
+    //     for i in num_in_use..Self::LEN {
+    //         keys[i] = ;
+    //     }
+    //     message_slots_dst = keys.to_bytes();
+    // }
+}
+
+#[cfg(tests)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sol_box_state() {
+        owner = Pubkey::new_unique();
+        num_spots = 20;
+        num_in_use = 3;
+        is_initialized = true;
+        address1 = Pubkey::new_unique();
+        address2 = Pubkey::new_unique();
+        address3 = Pubkey::new_unique();
+        message_slots = vec![address1, address2, address3];
+        let init_box = SolBox {
+            owner,
+            num_in_use,
+            num_spots,
+            message_slots
+        };
+        assert_eq!(1, 1);
+    }
+}

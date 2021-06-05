@@ -6,5 +6,5 @@ mod entrypoint;
 /// Does something amazing :O
 pub mod processor;
 pub mod error;
-// pub mod state;
+pub mod state;
 pub mod instruction;
