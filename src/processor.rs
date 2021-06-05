@@ -18,10 +18,10 @@ use::{
         vec::Vec,
     },
 };
-// use crate::{
-//     error::MsgError,
-//     instruction::EmailInstruction,
-// };
+use crate::{
+    error::Sol2SolError,
+    instruction::Sol2SolInstruction,
+};
 
 /// Directs how message instructions will be handled
 pub struct Processor {
@@ -32,6 +32,86 @@ impl Processor {
         program_id: &'a Pubkey,
         accounts: &'a [AccountInfo],
         instruction_data: &[u8],
+    ) -> ProgramResult {
+        let instruction = Sol2SolInstruction::unpack(instruction_data)?;
+        Ok(match instruction {
+            Sol2SolInstruction::InitializeSolBox {
+                owner,
+                num_spots,
+                next_box,
+                prev_box,
+            } => {
+                let _ = Self::process_init_sol_box(
+                    program_id, 
+                    accounts,
+                    &owner,
+                    num_spots,
+                    &next_box,
+                    &prev_box,
+                );
+            },
+            Sol2SolInstruction::WriteMessage {
+                sender,
+                recipient,
+                sol_box_id,
+                msg_size,
+                msg_string,
+            } => {
+                let _ = Self::process_write_message(
+                    program_id, 
+                    accounts,
+                    &sender,
+                    &recipient, 
+                    &sol_box_id, 
+                    msg_size,
+                    &msg_string,
+                );
+            },
+            Sol2SolInstruction::DeleteMessage {
+                owner,
+                message_id,
+                sol_box_id,
+            } => {
+                let _ = Self::process_delete_message(
+                    program_id, 
+                    accounts,
+                    &owner,
+                    &message_id, 
+                    &sol_box_id,
+                );
+            }
+        })
+    }
+
+    fn process_init_sol_box<'a>(
+        program_id: &'a Pubkey,
+        accounts: &'a [AccountInfo],
+        owner: &'a Pubkey,
+        num_spots: u32,
+        next_box: &'a Pubkey,
+        prev_box: &'a Pubkey,
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    fn process_write_message<'a>(
+        program_id: &'a Pubkey,
+        accounts: &'a [AccountInfo],
+        sender: &'a Pubkey,
+        recipient: &'a Pubkey,
+        sol_box_id: &'a Pubkey,
+        msg_size: u32,
+        msg_string: &String,
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    fn process_delete_message<'a>(
+        program_id: &'a Pubkey,
+        accounts: &'a [AccountInfo],
+        owner: &'a Pubkey,
+        recipient: &'a Pubkey,
+        sol_box_id: &'a Pubkey,
     ) -> ProgramResult {
         Ok(())
     }
