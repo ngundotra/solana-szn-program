@@ -190,3 +190,61 @@ impl Sol2SolInstruction {
         buf.extend_from_slice(msg_str);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_instruction_parsing() {
+        let msg_string: String = "hello world!".to_owned();     // 12
+        let init_msg_string = msg_string.clone();
+        let msg_size: u32 = msg_string.len() as u32;            // 4
+        let sender = Pubkey::new_unique();                      // 32
+        let recipient = Pubkey::new_unique();                   // 32
+        // 12 + 4 + 32 + 32 + 1 (tag) = 81
+        // msg!("test-instruction message size is: {:?} [{:?}]", msg_size, msg_string);
+        let instruction = Sol2SolInstruction::WriteMessage {
+            sender,
+            recipient,
+            msg_size,
+            msg_string,
+        };
+        let packed_vec = instruction.pack();
+        assert_eq!(69 + msg_size as usize, packed_vec.len());
+        
+        let recreated = Sol2SolInstruction::unpack(&packed_vec[..]).unwrap();
+        assert_eq!(instruction, recreated);
+        match instruction {
+            Sol2SolInstruction::WriteMessage{ msg_string, .. } => {
+                assert_eq!(init_msg_string, msg_string);
+            }
+            _ => {
+                assert_eq!(0, 1);
+            }
+        }
+        // let Sol2SolInstruction::WriteMessage{ msg_string, .. } = instruction;
+        // // msg!("test-instruction message was: {}", msg_string);
+        // let Sol2SolInstruction::WriteMessage{ msg_string, .. } = recreated;
+        // // msg!("test-instruction message recreated is: {}", msg_string);
+    }
+
+    // #[test]
+    // fn state_deserialize_invalid() {
+    //     assert_eq!(
+    //         FeatureProposalInstruction::unpack_from_slice(&[1]),
+    //         Ok(FeatureProposalInstruction::Tally),
+    //     );
+
+    //     // Extra bytes (0xff) ignored...
+    //     assert_eq!(
+    //         FeatureProposalInstruction::unpack_from_slice(&[1, 0xff, 0xff, 0xff]),
+    //         Ok(FeatureProposalInstruction::Tally),
+    //     );
+
+    //     assert_eq!(
+    //         FeatureProposalInstruction::unpack_from_slice(&[2]),
+    //         Err(ProgramError::InvalidInstructionData),
+    //     );
+    // }
+}
