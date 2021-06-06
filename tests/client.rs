@@ -30,15 +30,14 @@ use {
     #[tokio::test]
     async fn test_init_sol_box() {
         let program_id = Pubkey::from_str(&"invoker111111111111111111111111111111111111").unwrap();
+        let sol_box_pair = Keypair::new();
+
         let mut program_test = ProgramTest::new(
             &"sol2sol",
             program_id,
             processor!(Processor::process_instruction),
         );
         let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
-        let sol_box_pair = Keypair::new();
-        let idk = Keypair::new();
-        let wtf = Keypair::new();
 
         let rent = banks_client.get_rent().await.unwrap();
         let create_account_ix = system_instruction::create_account(
@@ -48,12 +47,6 @@ use {
             SolBox::get_packed_len().try_into().unwrap(),
             &payer.pubkey(),
         );
-        // assert_eq!(create_account_ix.)
-        // let pre_existing_acct = banks_client.get_account(sol_box_pair.pubkey())
-        //     .await
-        //     .expect("get_account")
-        //     .expect("associated_account not none");
-        // println!("Found account!");
 
         let mut transaction = Transaction::new_with_payer(
             // &[Instruction::new_with_bincode(
@@ -71,8 +64,12 @@ use {
             &[create_account_ix],
             Some(&payer.pubkey()),
         );
-        // // transaction.sign(&[&payer, &nft_factory_pair, &nft_holder_pair], recent_blockhash);
         transaction.sign(&[&payer, &sol_box_pair], recent_blockhash);
-        // banks_client.process_transaction(transaction).await.unwrap();
+        banks_client.process_transaction(transaction).await.unwrap();
+        let sol_box_acct = banks_client.get_account(sol_box_pair.pubkey())
+            .await
+            .expect("get_account")
+            .expect("associated_account not none");
+        assert_eq!(sol_box_acct.data.len(), SolBox::get_packed_len());
     }
 // }
