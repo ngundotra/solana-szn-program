@@ -155,8 +155,10 @@ impl Pack for SolBox {
 
 /// Packs the Message state into data
 pub fn pack_message_into(msg_size: u32, msg_string: &String, dst: &mut [u8]) {
-    dst.copy_from_slice(&msg_size.to_le_bytes());
-    dst.copy_from_slice(msg_string.as_bytes());
+    let size_dst = array_mut_ref![dst, 0, 4];
+    size_dst.copy_from_slice(&msg_size.to_le_bytes());
+    let (_, string_dst) = dst.split_at_mut(4);
+    string_dst.copy_from_slice(msg_string.as_bytes());
 }
 /// Unpacks the Message state from data
 pub fn unpack_message_from(src: &mut [u8]) -> Result<(u32, String), ProgramError> {
@@ -209,5 +211,17 @@ pub mod tests {
 
         let recreated_box = SolBox::unpack_from_slice(dst).unwrap();
         assert_eq!(init_box, recreated_box);
+    }
+
+    #[test]
+    fn test_message_state() {
+        let msg_size: u32 = 6;
+        let msg_string: String = "penis!".to_string();
+        let dst: &mut [u8] = &mut [0; 10];
+        pack_message_into(msg_size, &msg_string, dst);
+
+        let (rec_msg_size, rec_msg_string) = unpack_message_from(dst).unwrap();
+        assert_eq!(msg_size, rec_msg_size);
+        assert_eq!(msg_string, rec_msg_string);
     }
 }
