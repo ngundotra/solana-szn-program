@@ -3,6 +3,7 @@ use::{
     // arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
     solana_program::{  
         entrypoint::{ProgramResult},
+        program_error::{ProgramError},
         account_info::{
             next_account_info, 
             AccountInfo,
@@ -64,7 +65,8 @@ impl Processor {
             Sol2SolInstruction::WriteMessage {
                 sender,
                 recipient,
-                sol_box_id,
+                message_pubkey,
+                sol_box_pubkey,
                 msg_size,
                 msg_string,
             } => {
@@ -73,7 +75,8 @@ impl Processor {
                     accounts,
                     &sender,
                     &recipient, 
-                    &sol_box_id, 
+                    &message_pubkey,
+                    &sol_box_pubkey, 
                     msg_size,
                     &msg_string,
                 )
@@ -156,7 +159,8 @@ impl Processor {
         accounts: &'a [AccountInfo],
         sender: &'a Pubkey,
         recipient: &'a Pubkey,
-        sol_box_id: &'a Pubkey,
+        message_pubkey: &'a Pubkey,
+        sol_box_pubkey: &'a Pubkey,
         msg_size: u32,
         msg_string: &String,
     ) -> ProgramResult {
@@ -169,6 +173,10 @@ impl Processor {
         msg!("Checking owner of message field matches");
         if message_account_info.owner != program_id {
             return Err(Sol2SolError::OwnerMismatch.into());
+        }
+        msg!("Checking message account id matches");
+        if message_account_info.key != message_pubkey {
+            return Err(ProgramError::InvalidInstructionData);
         }
         msg!("Checking owner of sol box field matches program id");
         if sol_box_info.owner != program_id {

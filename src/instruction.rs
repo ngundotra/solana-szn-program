@@ -41,8 +41,10 @@ pub enum Sol2SolInstruction {
         sender: Pubkey,
         /// Which address is the email for
         recipient: Pubkey,
+        /// Address of message
+        message_pubkey: Pubkey,
         /// Which box to send it to
-        sol_box_id: Pubkey,
+        sol_box_pubkey: Pubkey,
         /// How large is the email
         msg_size: u32,
         /// What is the utf-8 data of the email
@@ -78,13 +80,15 @@ impl Sol2SolInstruction {
             1 => {
                 let (sender, rest) = Self::unpack_pubkey(rest)?;
                 let (recipient, rest) = Self::unpack_pubkey(rest)?;
-                let (sol_box_id, rest) = Self::unpack_pubkey(rest)?;
+                let (message_pubkey, rest) = Self::unpack_pubkey(rest)?;
+                let (sol_box_pubkey, rest) = Self::unpack_pubkey(rest)?;
                 let (msg_size, rest) = Self::unpack_size(rest)?;
                 let (msg_string, _rest) = Self::unpack_msg(rest, msg_size as usize)?;
                 Self::WriteMessage {
                     sender,
                     recipient,
-                    sol_box_id,
+                    message_pubkey,
+                    sol_box_pubkey,
                     msg_size,
                     msg_string
                 }
@@ -164,14 +168,16 @@ impl Sol2SolInstruction {
             Self::WriteMessage {
                 sender,
                 recipient,
-                sol_box_id,
+                message_pubkey,
+                sol_box_pubkey,
                 msg_size,
                 msg_string,
             } => {
                 buf.push(1);
                 buf.extend_from_slice(&sender.to_bytes());
                 buf.extend_from_slice(&recipient.to_bytes());
-                buf.extend_from_slice(&sol_box_id.to_bytes());
+                buf.extend_from_slice(&message_pubkey.to_bytes());
+                buf.extend_from_slice(&sol_box_pubkey.to_bytes());
                 buf.extend_from_slice(&msg_size.to_le_bytes());
                 Self::pack_msg(&msg_string, &mut buf);
             }
@@ -224,32 +230,38 @@ pub fn init_sol_box(
     })
 }
 
-// /// Creates an InitializeSolBox instruction
-// pub fn init_sol_box(
-//     program_id: &Pubkey,
-//     payer_pubkey: &Pubkey,
-//     sol_box_pubkey: &Pubkey,
-// ) -> Result<Instruction, ProgramError> {
-//     let data: Vec<u8> = Sol2SolInstruction::InitializeSolBox {
-//         owner: *payer_pubkey,
-//         num_spots: 20 as u32,
-//         next_box: *sol_box_pubkey,
-//         prev_box: *sol_box_pubkey
-//     }.pack();
+/// Creates an WriteMessage instruction
+pub fn write_message(
+    program_id: &Pubkey,
+    payer_pubkey: &Pubkey,
+    recipient_pubkey: &Pubkey,
+    sol_box_pubkey: &Pubkey,
+    message_pubkey: &Pubkey,
+    msg_size: u32,
+    msg_string: &String,
+) -> Result<Instruction, ProgramError> {
+    let data: Vec<u8> = Sol2SolInstruction::WriteMessage {
+        sender: *payer_pubkey,
+        recipient: *recipient_pubkey,
+        message_pubkey: *message_pubkey,
+        sol_box_pubkey: *sol_box_pubkey,
+        msg_size,
+        msg_string: (*msg_string.to_owned()).to_string(),
+    }.pack();
 
-//     let accounts = vec![
-//         // AccountMeta::new(*program_id, false),
-//         AccountMeta::new(*sol_box_pubkey, true),
-//         AccountMeta::new(*payer_pubkey, true),
-//         AccountMeta::new_readonly(sysvar::rent::id(), false),
-//     ];
+    let accounts = vec![
+        AccountMeta::new(*message_pubkey, false),
+        AccountMeta::new(*sol_box_pubkey, true),
+        AccountMeta::new(*payer_pubkey, true),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
 
-//     Ok(Instruction {
-//         program_id: *program_id,
-//         accounts,
-//         data
-//     })
-// }
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data
+    })
+}
 
 #[cfg(test)]
 mod tests {
@@ -262,18 +274,20 @@ mod tests {
         let msg_size: u32 = msg_string.len() as u32;            // 4
         let sender = Pubkey::new_unique();                      // 32
         let recipient = Pubkey::new_unique();                   // 32
-        let sol_box_id = Pubkey::new_unique();                  // 32
+        let message_pubkey = Pubkey::new_unique();                   // 32
+        let sol_box_pubkey = Pubkey::new_unique();                  // 32
         // 12 + 4 + 32 + 32 + 1 (tag) = 113
         let instruction = Sol2SolInstruction::WriteMessage {
             sender,
             recipient,
-            sol_box_id,
+            message_pubkey,
+            sol_box_pubkey,
             msg_size,
             msg_string,
         };
         let packed_vec = instruction.pack();
-        assert_eq!(101 + msg_size as usize, packed_vec.len());
-        assert_eq!(113, packed_vec.len());
+        assert_eq!(133 + msg_size as usize, packed_vec.len());
+        assert_eq!(145, packed_vec.len());
         
         let recreated = Sol2SolInstruction::unpack(&packed_vec[..]).unwrap();
         assert_eq!(instruction, recreated);
