@@ -4,11 +4,11 @@ use {
         array_ref,
     },
     solana_program::{
-        // instruction::{AccountMeta, Instruction},
+        instruction::{AccountMeta, Instruction},
         program_error::{ProgramError},
         pubkey::Pubkey,
         // program_option::COption,
-        // sysvar,
+        sysvar,
     },
     std::{
         result::Result,
@@ -188,18 +188,40 @@ impl Sol2SolInstruction {
         };
         buf
     }
-    /// Packs instruction into a u8 buffer
-    pub fn packInitSolBox(&self) -> [u8; 100] {
-        let ix_data = Self::pack(self);
-        let ix_data = array_ref![ix_data, 0, 100];
-        return *ix_data;
-    }
 
     fn pack_msg(msg: &String, buf: &mut Vec<u8>) {
         let msg_str: &[u8] = msg.as_bytes();
         // println!("\tMsg str is: {} and has size {}", msg, msg_str.len());
         buf.extend_from_slice(msg_str);
     }
+
+}
+
+/// Creates an InitializeSolBox instruction
+pub fn init_sol_box(
+    program_id: &Pubkey,
+    payer_pubkey: &Pubkey,
+    sol_box_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let data: Vec<u8> = Sol2SolInstruction::InitializeSolBox {
+        owner: *payer_pubkey,
+        num_spots: 20 as u32,
+        next_box: *sol_box_pubkey,
+        prev_box: *sol_box_pubkey
+    }.pack();
+
+    let accounts = vec![
+        // AccountMeta::new(*program_id, false),
+        AccountMeta::new(*sol_box_pubkey, true),
+        AccountMeta::new(*payer_pubkey, true),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data
+    })
 }
 
 #[cfg(test)]

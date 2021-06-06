@@ -111,24 +111,24 @@ impl Processor {
 
         // Check that this was created properly
         msg!("Checking system owner");
-        // if sol_box_info.owner != program_id {
-        //     return Err(Sol2SolError::OwnerMismatch.into());
-        // }
+        if sol_box_info.owner != program_id {
+            return Err(Sol2SolError::OwnerMismatch.into());
+        }
         // Check that account data is zero'd
-        msg!("Checking data is uninitialized");
-        let sol_box = SolBox::unpack_unchecked(&sol_box_info.data.borrow())?;
+        // msg!("Checking data is uninitialized");
+        // let sol_box = SolBox::unpack_unchecked(&sol_box_info.data.borrow())?;
         // if sol_box.is_initialized {
         //     return Err(Sol2SolError::SolBoxAlreadyInUse.into());
         // }
         // Check that payer will be user-space owner
         msg!("Checking user space owner");
-        // if owner != payer_info.key {
-        //     return Err(Sol2SolError::OwnerMismatch.into());
-        // }
+        if owner != payer_info.key {
+            return Err(Sol2SolError::OwnerMismatch.into());
+        }
         // Check that the solbox is rent-exempt
-        // if !rent.is_exempt(sol_box_info.lamports(), sol_box_data_len) {
-        //     return Err(Sol2SolError::InsufficientFunds.into());
-        // }
+        if !rent.is_exempt(sol_box_info.lamports(), sol_box_data_len) {
+            return Err(Sol2SolError::InsufficientFunds.into());
+        }
         // -------End Account Check----->
 
         // <---------Init Sol Box-------

@@ -21,7 +21,10 @@ use {
     },
     sol2sol::{
         processor::Processor,
-        instruction::Sol2SolInstruction,
+        instruction::{
+            Sol2SolInstruction,
+            init_sol_box
+        },
         state::SolBox,
     },
     std::{convert::TryInto, str::FromStr},
@@ -34,7 +37,7 @@ use {
         let program_id = Pubkey::from_str(&"invoker111111111111111111111111111111111111").unwrap();
         let sol_box_pair = Keypair::new();
 
-        let mut program_test = ProgramTest::new(
+        let program_test = ProgramTest::new(
             &"sol2sol",
             program_id,
             processor!(Processor::process_instruction),
@@ -50,26 +53,16 @@ use {
             &program_id,
         );
 
-        let init_sol_box_ix = Sol2SolInstruction::InitializeSolBox {
-            owner: payer.pubkey(),
-            num_spots: 20 as u32,
-            next_box: sol_box_pair.pubkey(),
-            prev_box: sol_box_pair.pubkey(),
-        }.pack();
+        let init_sol_box_ix = init_sol_box(
+            &program_id,
+            &payer.pubkey(),
+            &sol_box_pair.pubkey(),
+        ).unwrap();
 
         let mut transaction = Transaction::new_with_payer(
             &[
                 create_account_ix,
-                Instruction {
-                    program_id,
-                    data: init_sol_box_ix,
-                    accounts: vec![
-                        AccountMeta::new(program_id, false),
-                        AccountMeta::new(sol_box_pair.pubkey(), true),
-                        AccountMeta::new(payer.pubkey(), true),
-                        AccountMeta::new(sysvar::rent::id(), false),
-                    ],
-                },
+                init_sol_box_ix,
             ],
             Some(&payer.pubkey()),
         );
