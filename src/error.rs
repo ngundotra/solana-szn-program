@@ -18,6 +18,12 @@ pub enum Sol2SolError {
     /// When account has incorrect data
     #[error("Invalid account data provided")]
     InvalidAccountData,
+    /// When a sol box is already init'd
+    #[error("Sol box already initialized")]
+    SolBoxAlreadyInUse,
+    /// User-space `Owner` must be person paying
+    #[error("Payer must be owner")]
+    OwnerMismatch,
 }
 impl From<Sol2SolError> for ProgramError {
     fn from(e: Sol2SolError) -> Self {

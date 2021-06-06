@@ -1,20 +1,20 @@
 //! Does something important
 use::{
     // arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
-    solana_program::{
+    solana_program::{  
         entrypoint::{ProgramResult},
         account_info::{
-            // next_account_info, 
-            AccountInfo
+            next_account_info, 
+            AccountInfo,
         },
         pubkey::Pubkey,
-        // program_pack::{Pack},
-        // rent::Rent,
+        program_pack::{Pack},
+        rent::Rent,
         // msg,
         // system_instruction,
         // program::{invoke, invoke_signed},
         // system_program,
-        // sysvar::{Sysvar},
+        sysvar::{Sysvar},
     },
     // std::{
     //     str::from_utf8,
@@ -24,7 +24,11 @@ use::{
 use crate::{
     // error::Sol2SolError,
     instruction::Sol2SolInstruction,
-    state::{SolBox, SOL_BOX_NUM_SPOTS},
+    state::{
+        SolBox, 
+        SOL_BOX_NUM_SPOTS
+    },
+    error::Sol2SolError,
 };
 
 /// Directs how message instructions will be handled
@@ -95,6 +99,34 @@ impl Processor {
         next_box: &'a Pubkey,
         prev_box: &'a Pubkey,
     ) -> ProgramResult {
+
+        // <------Accounts Check------
+        let account_info_iter = &mut accounts.iter();
+        let sol_box_info = next_account_info(account_info_iter)?;
+        let sol_box_data_len = sol_box_info.data_len();
+
+        // Check that this was created properly
+        if sol_box_info.owner != program_id {
+            return Err(Sol2SolError::OwnerMismatch.into());
+        }
+        // Check that account data is zero'd
+        let sol_box = SolBox::unpack_unchecked(&sol_box_info.data.borrow())?;
+        if sol_box.is_initialized {
+            return Err(Sol2SolError::SolBoxAlreadyInUse.into());
+        }
+        // Check that payer will be user-space owner
+        let payer_info = next_account_info(account_info_iter)?;
+        if owner != payer_info.key {
+            return Err(Sol2SolError::OwnerMismatch.into());
+        }
+        // Check that the solbox is rent-exempt
+        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+        if !rent.is_exempt(sol_box_info.lamports(), sol_box_data_len) {
+            return Err(Sol2SolError::InsufficientFunds.into());
+        }
+        // -------End Account Check----->
+
+        // <---------Init Sol Box-------
         let message_slots: [Pubkey; SOL_BOX_NUM_SPOTS] = SolBox::get_empty_message_slots();
         let sol_box = SolBox {
             owner: *owner,
@@ -105,6 +137,10 @@ impl Processor {
             is_initialized: true,
             num_in_use: 0,
         };
+
+        SolBox::pack(sol_box, &mut sol_box_info.data.borrow_mut())?;
+        // -------End Init Sol Box------>
+
         Ok(())
     }
 
@@ -130,3 +166,4 @@ impl Processor {
         Ok(())
     }
 }
+
