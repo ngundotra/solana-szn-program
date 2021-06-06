@@ -145,7 +145,7 @@ impl Sol2SolInstruction {
         }
     }
 
-    /// Packs a [EmailInstruction](enum.EmailInstruction.html) into a vec buffer
+    /// Packs instruction into a vec buffer
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match self {
@@ -187,6 +187,12 @@ impl Sol2SolInstruction {
             }
         };
         buf
+    }
+    /// Packs instruction into a u8 buffer
+    pub fn packInitSolBox(&self) -> [u8; 100] {
+        let ix_data = Self::pack(self);
+        let ix_data = array_ref![ix_data, 0, 100];
+        return *ix_data;
     }
 
     fn pack_msg(msg: &String, buf: &mut Vec<u8>) {

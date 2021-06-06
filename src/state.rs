@@ -71,6 +71,10 @@ impl Pack for SolBox {
         let owner = Pubkey::new(owner);
         let next_box = Pubkey::new(next_box);
         let prev_box = Pubkey::new(prev_box);
+        // msg!("Unpacking state!");
+        // owner.log();
+        // next_box.log();
+        // prev_box.log();
 
         let num_spots = u32::from_le_bytes(*num_spots);
         if usize::try_from(num_spots).unwrap() != SOL_BOX_NUM_SPOTS {

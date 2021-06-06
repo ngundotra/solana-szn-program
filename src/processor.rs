@@ -15,6 +15,7 @@ use::{
         // program::{invoke, invoke_signed},
         // system_program,
         sysvar::{Sysvar},
+        msg,
     },
     // std::{
     //     str::from_utf8,
@@ -42,21 +43,21 @@ impl Processor {
         instruction_data: &[u8],
     ) -> ProgramResult {
         let instruction = Sol2SolInstruction::unpack(instruction_data)?;
-        Ok(match instruction {
+        match instruction {
             Sol2SolInstruction::InitializeSolBox {
                 owner,
                 num_spots,
                 next_box,
                 prev_box,
             } => {
-                let _ = Self::process_init_sol_box(
+                Self::process_init_sol_box(
                     program_id, 
                     accounts,
                     &owner,
                     num_spots,
                     &next_box,
                     &prev_box,
-                );
+                )
             },
             Sol2SolInstruction::WriteMessage {
                 sender,
@@ -65,7 +66,7 @@ impl Processor {
                 msg_size,
                 msg_string,
             } => {
-                let _ = Self::process_write_message(
+                Self::process_write_message(
                     program_id, 
                     accounts,
                     &sender,
@@ -73,22 +74,22 @@ impl Processor {
                     &sol_box_id, 
                     msg_size,
                     &msg_string,
-                );
+                )
             },
             Sol2SolInstruction::DeleteMessage {
                 owner,
                 message_id,
                 sol_box_id,
             } => {
-                let _ = Self::process_delete_message(
+                Self::process_delete_message(
                     program_id, 
                     accounts,
                     &owner,
                     &message_id, 
                     &sol_box_id,
-                );
+                )
             }
-        })
+        }
     }
 
     fn process_init_sol_box<'a>(
@@ -103,27 +104,31 @@ impl Processor {
         // <------Accounts Check------
         let account_info_iter = &mut accounts.iter();
         let sol_box_info = next_account_info(account_info_iter)?;
+        let payer_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+
         let sol_box_data_len = sol_box_info.data_len();
 
         // Check that this was created properly
-        if sol_box_info.owner != program_id {
-            return Err(Sol2SolError::OwnerMismatch.into());
-        }
+        msg!("Checking system owner");
+        // if sol_box_info.owner != program_id {
+        //     return Err(Sol2SolError::OwnerMismatch.into());
+        // }
         // Check that account data is zero'd
+        msg!("Checking data is uninitialized");
         let sol_box = SolBox::unpack_unchecked(&sol_box_info.data.borrow())?;
-        if sol_box.is_initialized {
-            return Err(Sol2SolError::SolBoxAlreadyInUse.into());
-        }
+        // if sol_box.is_initialized {
+        //     return Err(Sol2SolError::SolBoxAlreadyInUse.into());
+        // }
         // Check that payer will be user-space owner
-        let payer_info = next_account_info(account_info_iter)?;
-        if owner != payer_info.key {
-            return Err(Sol2SolError::OwnerMismatch.into());
-        }
+        msg!("Checking user space owner");
+        // if owner != payer_info.key {
+        //     return Err(Sol2SolError::OwnerMismatch.into());
+        // }
         // Check that the solbox is rent-exempt
-        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
-        if !rent.is_exempt(sol_box_info.lamports(), sol_box_data_len) {
-            return Err(Sol2SolError::InsufficientFunds.into());
-        }
+        // if !rent.is_exempt(sol_box_info.lamports(), sol_box_data_len) {
+        //     return Err(Sol2SolError::InsufficientFunds.into());
+        // }
         // -------End Account Check----->
 
         // <---------Init Sol Box-------

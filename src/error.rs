@@ -12,6 +12,9 @@ pub enum Sol2SolError {
     /// When instruction data cannot be deserialized
     #[error("Invalid instruction data")]
     InvalidInstructionData,
+    /// Sanity check error
+    #[error("Invalid number of spots in state")]
+    SolBoxInvalidNumSpots,
     /// Signer needs more SOL to complete data
     #[error("Not enough SOL to complete transaction")]
     InsufficientFunds,
