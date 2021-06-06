@@ -53,6 +53,23 @@ impl SolBox {
         }
         message_slots_dst.copy_from_slice(key_bytes.as_ref());
     }
+
+    fn get_null_key() -> Pubkey {
+        Pubkey::from_str(NULL_PUBKEY_STR).unwrap()
+    }
+
+    /// Adds message to Sol Box if there's enough space
+    pub fn add_message_to_sol_box(message_slots: &mut [Pubkey; SOL_BOX_NUM_SPOTS], message_key: &Pubkey) -> Result<(), ProgramError> {
+        let null_key: Pubkey = Self::get_null_key();
+        for i in 0..SOL_BOX_NUM_SPOTS {
+            let curr_key = message_slots[i];
+            if curr_key == null_key {
+                message_slots[i] = *message_key;
+                return Ok(());
+            }
+        }
+        return Err(Sol2SolError::SolBoxNoSpaceLeft.into());
+    }
 }
 impl Sealed for SolBox {}
 impl IsInitialized for SolBox {
@@ -71,10 +88,6 @@ impl Pack for SolBox {
         let owner = Pubkey::new(owner);
         let next_box = Pubkey::new(next_box);
         let prev_box = Pubkey::new(prev_box);
-        // msg!("Unpacking state!");
-        // owner.log();
-        // next_box.log();
-        // prev_box.log();
 
         let num_spots = u32::from_le_bytes(*num_spots);
         if usize::try_from(num_spots).unwrap() != SOL_BOX_NUM_SPOTS {
@@ -89,7 +102,7 @@ impl Pack for SolBox {
             _ => return Err(ProgramError::InvalidAccountData)
         };
 
-        let null_pubkey = Pubkey::from_str(NULL_PUBKEY_STR).unwrap();
+        let null_pubkey = Self::get_null_key();
         let message_slots: &mut [Pubkey; SOL_BOX_NUM_SPOTS] = &mut [null_pubkey; SOL_BOX_NUM_SPOTS];
         let mut i = 0;
         for chunk in message_slots_src.chunks(32) {
@@ -140,6 +153,22 @@ impl Pack for SolBox {
     }
 }
 
+/// Packs the Message state into data
+pub fn pack_message_into(msg_size: u32, msg_string: &String, dst: &mut [u8]) {
+    dst.copy_from_slice(&msg_size.to_le_bytes());
+    dst.copy_from_slice(msg_string.as_bytes());
+}
+/// Unpacks the Message state from data
+pub fn unpack_message_from(src: &mut [u8]) -> Result<(u32, String), ProgramError> {
+    // let (msg_size_src, msg_string_src)
+    // dst.copy_from_slice(msg_size.to_le_bytes()));
+    // dst.copy_from_slice(msg_string.as_bytes());
+    let msg_size_src = array_ref![src, 0, 4];
+    let (_, msg_string_src) = src.split_at(4);
+    let msg_size = u32::from_le_bytes(*msg_size_src);
+    let msg_string = String::from_utf8(msg_string_src[..].to_vec()).unwrap();
+    Ok((msg_size, msg_string))
+}
 
 
 #[cfg(test)]

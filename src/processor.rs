@@ -27,6 +27,8 @@ use crate::{
     instruction::Sol2SolInstruction,
     state::{
         SolBox, 
+        // Message,
+        pack_message_into,
         SOL_BOX_NUM_SPOTS
     },
     error::Sol2SolError,
@@ -158,6 +160,34 @@ impl Processor {
         msg_size: u32,
         msg_string: &String,
     ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let message_account_info = next_account_info(account_info_iter)?;
+        let sol_box_info = next_account_info(account_info_iter)?;
+        let payer_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+
+        msg!("Checking owner of message field matches");
+        if message_account_info.owner != program_id {
+            return Err(Sol2SolError::OwnerMismatch.into());
+        }
+        msg!("Checking owner of sol box field matches program id");
+        if sol_box_info.owner != program_id {
+            return Err(Sol2SolError::OwnerMismatch.into());
+        }
+        msg!("Checking owner of sol box field matches payer");
+        let mut sol_box = SolBox::unpack_unchecked(&sol_box_info.data.borrow())?;
+        if sol_box.owner != *payer_info.key {
+            return Err(Sol2SolError::OwnerMismatch.into());
+        }
+
+        msg!("Writing to message state");
+        pack_message_into(msg_size, msg_string, &mut message_account_info.data.borrow_mut());
+
+        msg!("Writing to sol box");
+        SolBox::add_message_to_sol_box(&mut sol_box.message_slots, &message_account_info.key)?;
+        SolBox::pack(sol_box, &mut sol_box_info.data.borrow_mut())?;
+
+        msg!("Writing message succeeded!");
         Ok(())
     }
 

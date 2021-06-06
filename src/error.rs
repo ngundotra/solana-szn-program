@@ -21,9 +21,9 @@ pub enum Sol2SolError {
     /// When account has incorrect data
     #[error("Invalid account data provided")]
     InvalidAccountData,
-    /// When a sol box is already init'd
-    #[error("Sol box already initialized")]
-    SolBoxAlreadyInUse,
+    /// When a sol box is out of space
+    #[error("Sol box has no space left for new messages")]
+    SolBoxNoSpaceLeft,
     /// User-space `Owner` must be person paying
     #[error("Payer must be owner")]
     OwnerMismatch,
