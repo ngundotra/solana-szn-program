@@ -7,6 +7,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
+    msg,
 };
 use std::{convert::TryFrom, str::FromStr};
 use crate::error::Sol2SolError;
@@ -78,13 +79,16 @@ impl IsInitialized for SolBox {
     }
 }
 impl Pack for SolBox {
-    const LEN: usize = 745; //20*32+32+32+32+4+4+1;
+    const LEN: usize = 746; //20*32+32+32+32+4+4+1;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, SolBox::LEN];
-        let (owner, next_box, prev_box, num_spots, num_in_use, is_initialized, message_slots_src) =
-            array_refs![src, 32, 32, 32, 4, 4, 1, SOL_BOX_NUM_SPOTS*32];
-
+        let (tag, owner, next_box, prev_box, num_spots, num_in_use, is_initialized, message_slots_src) =
+            array_refs![src, 1, 32, 32, 32, 4, 4, 1, SOL_BOX_NUM_SPOTS*32];
+        let tag = u8::from_le_bytes(*tag);
+        if tag != 0 {
+            return Err(Sol2SolError::InvalidAccountData.into());
+        }
         let owner = Pubkey::new(owner);
         let next_box = Pubkey::new(next_box);
         let prev_box = Pubkey::new(prev_box);
@@ -125,6 +129,7 @@ impl Pack for SolBox {
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let dst = array_mut_ref![dst, 0, SolBox::LEN];
         let (
+            tag_dst,
             owner_dst,
             next_box_dst,
             prev_box_dst,
@@ -132,7 +137,7 @@ impl Pack for SolBox {
             num_in_use_dst,
             is_initialized_dst,
             message_slots_dst,
-        ) = mut_array_refs![dst, 32, 32, 32, 4, 4, 1, (SOL_BOX_NUM_SPOTS as usize)*32];
+        ) = mut_array_refs![dst, 1, 32, 32, 32, 4, 4, 1, (SOL_BOX_NUM_SPOTS as usize)*32];
         let &SolBox {
             ref owner,
             ref next_box,
@@ -142,6 +147,8 @@ impl Pack for SolBox {
             is_initialized,
             ref message_slots,
         } = self;
+        let tag: u8 = 0;
+        tag_dst.copy_from_slice(&tag.to_le_bytes());
         owner_dst.copy_from_slice(owner.as_ref());
         next_box_dst.copy_from_slice(next_box.as_ref());
         prev_box_dst.copy_from_slice(prev_box.as_ref());
@@ -154,13 +161,15 @@ impl Pack for SolBox {
 }
 
 /// Begin Message State
-const FIXED_MSG_SIZE: usize = 68;
+const FIXED_MSG_SIZE: usize = 69;
 
 /// Packs the Message state into data
 pub fn pack_message_into(recipient: &Pubkey, sender: &Pubkey, msg_size: u32, msg_string: &String, dst: &mut [u8]) {
     let fixed_dst = array_mut_ref![dst, 0, FIXED_MSG_SIZE];
-    let (recipient_dst, sender_dst, size_dst) =
-        mut_array_refs![fixed_dst, 32, 32, 4];
+    let (tag_dst, recipient_dst, sender_dst, size_dst) =
+        mut_array_refs![fixed_dst, 1, 32, 32, 4];
+    let tag: u8 = 1;
+    tag_dst.copy_from_slice(&tag.to_le_bytes());
     recipient_dst.copy_from_slice(recipient.as_ref());
     sender_dst.copy_from_slice(sender.as_ref());
     size_dst.copy_from_slice(&msg_size.to_le_bytes());
@@ -173,7 +182,12 @@ pub fn unpack_message_from(src: &mut [u8]) -> Result<(Pubkey, Pubkey, u32, Strin
     // dst.copy_from_slice(msg_size.to_le_bytes()));
     // dst.copy_from_slice(msg_string.as_bytes());
     let fixed_src = array_ref![src, 0, FIXED_MSG_SIZE];
-    let (recipient_src, sender_src, msg_size_src) = array_refs![fixed_src, 32, 32, 4];
+    let (tag_src, recipient_src, sender_src, msg_size_src) = array_refs![fixed_src, 1, 32, 32, 4];
+    let tag = u8::from_le_bytes(*tag_src);
+    msg!("Checking that message state has right tag");
+    if tag != 1 {
+        return Err(Sol2SolError::InvalidAccountData.into());
+    }
     let recipient = Pubkey::new(recipient_src);
     let sender = Pubkey::new(sender_src);
     let msg_size = u32::from_le_bytes(*msg_size_src);
