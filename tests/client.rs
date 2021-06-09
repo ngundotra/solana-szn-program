@@ -153,7 +153,7 @@ async fn test_write_message() {
         &payer_pair.pubkey(),
         &message_pair.pubkey(),
         rent.minimum_balance(10),
-        10,
+        74,
         &program_id,
     );
 
@@ -174,14 +174,19 @@ async fn test_write_message() {
         ],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &payer_pair, &sol_box_pair, &message_pair], recent_blockhash);
+    transaction.sign(&[
+        &payer, 
+        &payer_pair, 
+        &sol_box_pair, 
+        &message_pair, 
+    ], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
     let message_acct = banks_client.get_account(message_pair.pubkey())
         .await
         .expect("get_account")
         .expect("associated_account not none");
-    assert_eq!(10, message_acct.data.len());
+    assert_eq!(74, message_acct.data.len());
 
     let sol_box_acct = banks_client.get_account(sol_box_pair.pubkey())
         .await

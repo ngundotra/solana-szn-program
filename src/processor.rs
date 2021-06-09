@@ -170,13 +170,17 @@ impl Processor {
         let payer_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
 
-        msg!("Checking owner of message field matches");
+        msg!("Checking owner of message field matches program id");
         if message_account_info.owner != program_id {
             return Err(Sol2SolError::OwnerMismatch.into());
         }
         msg!("Checking message account id matches");
         if message_account_info.key != message_pubkey {
             return Err(ProgramError::InvalidInstructionData);
+        }
+        msg!("Checking that sol box pubkey matches instruction pubkey");
+        if sol_box_info.key != sol_box_pubkey {
+            return Err(Sol2SolError::IncorrectSolBox.into())
         }
         msg!("Checking owner of sol box field matches program id");
         if sol_box_info.owner != program_id {
