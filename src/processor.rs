@@ -189,7 +189,7 @@ impl Processor {
         }
 
         msg!("Writing to message state");
-        pack_message_into(msg_size, msg_string, &mut message_account_info.data.borrow_mut());
+        pack_message_into(recipient, sender, msg_size, msg_string, &mut message_account_info.data.borrow_mut());
 
         msg!("Writing to sol box");
         SolBox::add_message_to_sol_box(&mut sol_box.message_slots, &message_account_info.key)?;

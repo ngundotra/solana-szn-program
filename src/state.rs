@@ -153,23 +153,33 @@ impl Pack for SolBox {
     }
 }
 
+/// Begin Message State
+const FIXED_MSG_SIZE: usize = 68;
+
 /// Packs the Message state into data
-pub fn pack_message_into(msg_size: u32, msg_string: &String, dst: &mut [u8]) {
-    let size_dst = array_mut_ref![dst, 0, 4];
+pub fn pack_message_into(recipient: &Pubkey, sender: &Pubkey, msg_size: u32, msg_string: &String, dst: &mut [u8]) {
+    let fixed_dst = array_mut_ref![dst, 0, FIXED_MSG_SIZE];
+    let (recipient_dst, sender_dst, size_dst) =
+        mut_array_refs![fixed_dst, 32, 32, 4];
+    recipient_dst.copy_from_slice(recipient.as_ref());
+    sender_dst.copy_from_slice(sender.as_ref());
     size_dst.copy_from_slice(&msg_size.to_le_bytes());
-    let (_, string_dst) = dst.split_at_mut(4);
+    let (_, string_dst) = dst.split_at_mut(FIXED_MSG_SIZE);
     string_dst.copy_from_slice(msg_string.as_bytes());
 }
 /// Unpacks the Message state from data
-pub fn unpack_message_from(src: &mut [u8]) -> Result<(u32, String), ProgramError> {
+pub fn unpack_message_from(src: &mut [u8]) -> Result<(Pubkey, Pubkey, u32, String), ProgramError> {
     // let (msg_size_src, msg_string_src)
     // dst.copy_from_slice(msg_size.to_le_bytes()));
     // dst.copy_from_slice(msg_string.as_bytes());
-    let msg_size_src = array_ref![src, 0, 4];
-    let (_, msg_string_src) = src.split_at(4);
+    let fixed_src = array_ref![src, 0, FIXED_MSG_SIZE];
+    let (recipient_src, sender_src, msg_size_src) = array_refs![fixed_src, 32, 32, 4];
+    let recipient = Pubkey::new(recipient_src);
+    let sender = Pubkey::new(sender_src);
     let msg_size = u32::from_le_bytes(*msg_size_src);
+    let (_, msg_string_src) = src.split_at(FIXED_MSG_SIZE);
     let msg_string = String::from_utf8(msg_string_src[..].to_vec()).unwrap();
-    Ok((msg_size, msg_string))
+    Ok((recipient, sender, msg_size, msg_string))
 }
 
 
@@ -215,12 +225,16 @@ pub mod tests {
 
     #[test]
     fn test_message_state() {
+        let recipient = Pubkey::new_unique();
+        let sender = Pubkey::new_unique();
         let msg_size: u32 = 6;
         let msg_string: String = "penis!".to_string();
-        let dst: &mut [u8] = &mut [0; 10];
-        pack_message_into(msg_size, &msg_string, dst);
+        let dst: &mut [u8] = &mut [0; FIXED_MSG_SIZE + 6];
+        pack_message_into(&recipient, &sender, msg_size, &msg_string, dst);
 
-        let (rec_msg_size, rec_msg_string) = unpack_message_from(dst).unwrap();
+        let (rec_recipient, rec_sender, rec_msg_size, rec_msg_string) = unpack_message_from(dst).unwrap();
+        assert_eq!(recipient, rec_recipient);
+        assert_eq!(sender, rec_sender);
         assert_eq!(msg_size, rec_msg_size);
         assert_eq!(msg_string, rec_msg_string);
     }
