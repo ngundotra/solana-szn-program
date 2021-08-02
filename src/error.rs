@@ -27,6 +27,12 @@ pub enum Sol2SolError {
     /// User-space `Owner` must be person paying
     #[error("Payer must be owner")]
     OwnerMismatch,
+    /// User-space `owner` must own Sol Box 
+    #[error("Payer must be owner")]
+    SolBoxUserOwnerMismatch,
+    /// System-space `Owner` must be person paying
+    #[error("Payer must be owner")]
+    SolBoxSystemOwnerMismatch,
     /// Make sure instruction data matches account info 
     #[error("Sol box info does not match passed pubkey")]
     IncorrectSolBox,

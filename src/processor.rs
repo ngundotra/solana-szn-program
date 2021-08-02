@@ -105,6 +105,7 @@ impl Processor {
         next_box: &'a Pubkey,
         prev_box: &'a Pubkey,
     ) -> ProgramResult {
+        msg!("[process]initializing sol box");
 
         // <------Accounts Check------
         let account_info_iter = &mut accounts.iter();
@@ -117,7 +118,15 @@ impl Processor {
         // Check that this was created properly
         msg!("Checking system owner");
         if sol_box_info.owner != program_id {
-            return Err(Sol2SolError::OwnerMismatch.into());
+            msg!(&format!("Sol box owner: {}", &sol_box_info.owner.to_string()));
+            msg!(&format!("Program id: {}", &program_id.to_string()));
+            msg!("erroring on sol box mismatch");
+            return Err(Sol2SolError::SolBoxSystemOwnerMismatch.into());
+        }
+
+        if !sol_box_info.is_writable {
+            msg!("Sol box info is not writable, exiting!");
+            return Err(Sol2SolError::InvalidAccountData.into());
         }
         // Check that account data is zero'd
         // msg!("Checking data is uninitialized");
@@ -128,15 +137,20 @@ impl Processor {
         // Check that payer will be user-space owner
         msg!("Checking user space owner");
         if owner != payer_info.key {
+            msg!(&format!("Owner: {}", &owner.to_string()));
+            msg!(&format!("Payer info: {}", &payer_info.key.to_string()));
+            msg!("erroring on owner mismatch");
             return Err(Sol2SolError::OwnerMismatch.into());
         }
         // Check that the solbox is rent-exempt
+        msg!("Checking that sol box is rent exempt");
         if !rent.is_exempt(sol_box_info.lamports(), sol_box_data_len) {
             return Err(Sol2SolError::InsufficientFunds.into());
         }
         // -------End Account Check----->
 
         // <---------Init Sol Box-------
+        msg!("initializing sol box");
         let message_slots: [Pubkey; SOL_BOX_NUM_SPOTS] = SolBox::get_empty_message_slots();
         let sol_box = SolBox {
             owner: *owner,
@@ -148,7 +162,10 @@ impl Processor {
             num_in_use: 0,
         };
 
+        msg!("Packing sol box");
+
         SolBox::pack(sol_box, &mut sol_box_info.data.borrow_mut())?;
+        msg!("Done!");
         // -------End Init Sol Box------>
 
         Ok(())
@@ -164,6 +181,7 @@ impl Processor {
         msg_size: u32,
         msg_string: &String,
     ) -> ProgramResult {
+        msg!("[processs]writing message");
         let account_info_iter = &mut accounts.iter();
         let message_account_info = next_account_info(account_info_iter)?;
         let sol_box_info = next_account_info(account_info_iter)?;
@@ -184,12 +202,12 @@ impl Processor {
         }
         msg!("Checking owner of sol box field matches program id");
         if sol_box_info.owner != program_id {
-            return Err(Sol2SolError::OwnerMismatch.into());
+            return Err(Sol2SolError::SolBoxSystemOwnerMismatch.into());
         }
         msg!("Checking owner of sol box field matches payer");
         let mut sol_box = SolBox::unpack_unchecked(&sol_box_info.data.borrow())?;
         if sol_box.owner != *payer_info.key {
-            return Err(Sol2SolError::OwnerMismatch.into());
+            return Err(Sol2SolError::SolBoxUserOwnerMismatch.into());
         }
 
         msg!("Writing to message state");
@@ -210,6 +228,7 @@ impl Processor {
         recipient: &'a Pubkey,
         sol_box_id: &'a Pubkey,
     ) -> ProgramResult {
+        msg!("[process]deleting message");
         Ok(())
     }
 }
